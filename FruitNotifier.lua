@@ -420,14 +420,8 @@ local SoundList = {
 }
 
 local MusicList = {
-    { Name = "Гимн России", Id = "9040163991" },
-    { Name = "Kalinka", Id = "1845924062" },
-    { Name = "Soviet March", Id = "1841140365" },
-    { Name = "Hard Bass Russian", Id = "1478734728" },
-    { Name = "Russian Hard Bass 2", Id = "1527688465" },
-    { Name = "Священная война", Id = "754859317667123" },
-    { Name = "Лето и арбалеты", Id = "18982131020" },
-    { Name = "Москва", Id = "132973772452511" },
+    { Name = "Гимн Украины", Id = "1837478410" },
+    { Name = "Гимн Украины (v2)", Id = "494399831" },
 }
 
 local MusicSound = nil
