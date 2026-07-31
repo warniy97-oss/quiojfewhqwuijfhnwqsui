@@ -1511,6 +1511,16 @@ for i, name in ipairs(TabNames) do
     TabButtons[name] = tabBtn
 end
 
+-- Картинка под вкладками в сайдбаре
+local sidebarImg = Instance.new("ImageLabel")
+sidebarImg.Size = UDim2.new(0, SIDEBAR_W - 20, 0, SIDEBAR_W - 20)
+sidebarImg.Position = UDim2.new(0, 10, 0, TAB_TOP + #TabNames * TAB_H + 12)
+sidebarImg.BackgroundTransparency = 1
+sidebarImg.ScaleType = Enum.ScaleType.Fit
+sidebarImg.Image = "rbxassetid://4528820699"
+sidebarImg.ImageColor3 = Color3.fromRGB(255, 255, 255)
+sidebarImg.Parent = main
+
 -- Фабрика тоглов: плоский квадратный чекбокс (GameSense)
 local function CreateToggle(name, settingKey, order, onChanged, page, swatchColor)
     local btn = Instance.new("TextButton")
