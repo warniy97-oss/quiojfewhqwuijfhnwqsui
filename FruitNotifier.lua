@@ -1602,50 +1602,6 @@ local function CreateGroupHeader(page, order, text)
     return h
 end
 
-CreateGroupHeader(Pages.Fruits, 1, "Notifications")
-CreateToggle("Уведомления", "Notifications", 2)
-CreateToggle("Звук", "NotifySound", 3)
-CreateSoundSelector("Тип звука", "NotifySoundId", SoundList, 4, Pages.Fruits)
-CreateToggle("Музыка", "MusicEnabled", 5, function(on)
-    ToggleMusic()
-end)
-CreateSoundSelector("Трек", "MusicId", MusicList, 6, Pages.Fruits, function()
-    ChangeMusic()
-end)
-CreateToggle("Fruit ESP", "FruitESP", 7)
-CreateToggle("Трейсеры", "TracerLines", 8)
-CreateGroupHeader(Pages.Fruits, 9, "Farm")
-CreateToggle("Авто-полёт 🛫", "AutoTeleport", 10, function(on)
-    if on then
-        FlyToNearest() -- включил тогл — сразу летим к ближайшему
-    else
-        StopTween()    -- выключил — останавливаем полёт
-    end
-end)
-CreateToggle("Auto Store 🎒", "AutoStore", 11)
-local dropRow = CreateToggle("Выброс в море 🌊", "DropIfFull", 12)
-
--- стрелка «доп. опции» на тогле выброса в море
-local dropArrow = Instance.new("TextButton")
-dropArrow.Size = UDim2.new(0, 18, 0, 18)
-dropArrow.Position = UDim2.new(1, -18, 0.5, -9)
-dropArrow.BackgroundTransparency = 1
-dropArrow.Text = ">" -- ASCII: юникод-стрелки (▸) в шрифтах Roblox рендерятся квадратом
-dropArrow.TextColor3 = Color3.fromRGB(160, 160, 170)
-dropArrow.TextSize = 14
-dropArrow.Font = Enum.Font.GothamBold
-dropArrow.Parent = dropRow
-
--- доп. опция выброса: скрыта, открывается стрелочкой «>»
-local flyToSeaRow = CreateToggle("   ↳ Лететь к морю ✈️", "FlyToSea", 13)
-flyToSeaRow.Visible = false
-
-    CreateToggle("Авто-ролл 🎰", "AutoRoll", 14)
-    CreateToggle("Отладка 🐞", "DebugMode", 15, function(on)
-        -- Сохраняем настройки при изменении режима отладки
-        SaveConfig()
-    end)
-
 -- Фабрика ползунков (тонкая дорожка, значение в подписи)
 local function CreateSlider(page, order, labelFormat, settingKey, minV, maxV)
     local row = Instance.new("Frame")
@@ -1818,6 +1774,49 @@ local function CreateSoundSelector(name, settingKey, list, order, page, onChange
     Refresh()
     table.insert(Sliders, { Refresh = Refresh })
 end
+
+CreateGroupHeader(Pages.Fruits, 1, "Notifications")
+CreateToggle("Уведомления", "Notifications", 2)
+CreateToggle("Звук", "NotifySound", 3)
+CreateSoundSelector("Тип звука", "NotifySoundId", SoundList, 4, Pages.Fruits)
+CreateToggle("Музыка", "MusicEnabled", 5, function(on)
+    ToggleMusic()
+end)
+CreateSoundSelector("Трек", "MusicId", MusicList, 6, Pages.Fruits, function()
+    ChangeMusic()
+end)
+CreateToggle("Fruit ESP", "FruitESP", 7)
+CreateToggle("Трейсеры", "TracerLines", 8)
+CreateGroupHeader(Pages.Fruits, 9, "Farm")
+CreateToggle("Авто-полёт 🛫", "AutoTeleport", 10, function(on)
+    if on then
+        FlyToNearest() -- включил тогл — сразу летим к ближайшему
+    else
+        StopTween()    -- выключил — останавливаем полёт
+    end
+end)
+CreateToggle("Auto Store 🎒", "AutoStore", 11)
+local dropRow = CreateToggle("Выброс в море 🌊", "DropIfFull", 12)
+
+-- стрелка «доп. опции» на тогле выброса в море
+local dropArrow = Instance.new("TextButton")
+dropArrow.Size = UDim2.new(0, 18, 0, 18)
+dropArrow.Position = UDim2.new(1, -18, 0.5, -9)
+dropArrow.BackgroundTransparency = 1
+dropArrow.Text = ">" -- ASCII: юникод-стрелки (▸) в шрифтах Roblox рендерятся квадратом
+dropArrow.TextColor3 = Color3.fromRGB(160, 160, 170)
+dropArrow.TextSize = 14
+dropArrow.Font = Enum.Font.GothamBold
+dropArrow.Parent = dropRow
+
+-- доп. опция выброса: скрыта, открывается стрелочкой «>»
+local flyToSeaRow = CreateToggle("   ↳ Лететь к морю ✈️", "FlyToSea", 13)
+flyToSeaRow.Visible = false
+
+CreateToggle("Авто-ролл 🎰", "AutoRoll", 14)
+CreateToggle("Отладка 🐞", "DebugMode", 15, function(on)
+    SaveConfig()
+end)
 
 -- Ползунок: лимит фруктов в стор
 CreateSlider(Pages.Fruits, 16, "Лимит стора: %d", "MaxStoreFruits", 1, 10)
