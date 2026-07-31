@@ -1522,28 +1522,6 @@ sidebarImg.ImageColor3 = Color3.fromRGB(255, 255, 255)
 sidebarImg.ZIndex = 2
 sidebarImg.Parent = sidebar
 
-local sidebarImgBtn = Instance.new("TextButton")
-sidebarImgBtn.Size = sidebarImg.Size
-sidebarImgBtn.Position = sidebarImg.Position
-sidebarImgBtn.BackgroundTransparency = 1
-sidebarImgBtn.Text = ""
-sidebarImgBtn.AutoButtonColor = false
-sidebarImgBtn.ZIndex = 3
-sidebarImgBtn.Parent = sidebar
-
-local astolfoImgs = {
-    "https://www.roblox.com/asset/?id=4528820693",
-    "https://www.roblox.com/asset/?id=12832725777",
-    "https://www.roblox.com/asset/?id=6712249616",
-    "https://www.roblox.com/asset/?id=17083298521",
-}
-local astolfoIdx = 1
-
-sidebarImgBtn.MouseButton1Click:Connect(function()
-    astolfoIdx = astolfoIdx % #astolfoImgs + 1
-    sidebarImg.Image = astolfoImgs[astolfoIdx]
-end)
-
 -- Фабрика тоглов: плоский квадратный чекбокс (GameSense)
 local function CreateToggle(name, settingKey, order, onChanged, page, swatchColor)
     local btn = Instance.new("TextButton")
