@@ -1517,7 +1517,7 @@ sidebarImg.Size = UDim2.new(1, -12, 1, -(#TabNames * TAB_H + 16))
 sidebarImg.Position = UDim2.new(0, 6, 0, #TabNames * TAB_H + 8)
 sidebarImg.BackgroundTransparency = 1
 sidebarImg.ScaleType = Enum.ScaleType.Fit
-sidebarImg.Image = "rbxassetid://4528820693"
+sidebarImg.Image = "https://www.roblox.com/asset/?id=4528820693"
 sidebarImg.ImageColor3 = Color3.fromRGB(255, 255, 255)
 sidebarImg.ZIndex = 2
 sidebarImg.Parent = sidebar
