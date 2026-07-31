@@ -1298,7 +1298,7 @@ local BG2 = Color3.fromRGB(26, 26, 32)      -- контейнеры / сайдб
 local BG3 = Color3.fromRGB(40, 40, 48)      -- подсветка при наведении
 local WIN_W = 318
 local SIDEBAR_W = 96                         -- ширина левой ленты вкладок
-local ExtraHeight = 0   -- больше не используется (скролл)
+local ExtraHeight = 0   -- добавка к высоте, когда открыты доп. опции выброса
 local ThemeToggles = {} -- чекбоксы тоглов для перекраски темы
 local Sliders = {}      -- ползунки (для перекраски темы и RefreshUI)
 local GroupHeaders = {} -- заголовки групп (для перекраски темой)
@@ -1313,7 +1313,7 @@ if not gui.Parent then gui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
 -- Главное окно
 local main = Instance.new("Frame")
-main.Size = UDim2.new(0, WIN_W, 0, 620)
+main.Size = UDim2.new(0, WIN_W, 0, 446)
 main.Position = UDim2.new(0, 20, 0.3, 0)
 main.BackgroundColor3 = BG
 main.BorderSizePixel = 0
@@ -1388,7 +1388,7 @@ minimizeBtn.Parent = header
 -- ---------- Вкладки: вертикальная лента слева (GameSense) ----------
 local TabNames = { "Fruits", "Combat", "Settings", "Configs" }
 local TabIcons = { Fruits = "🍈", Combat = "🗡️", Settings = "⚙️", Configs = "💾" }
-local PageHeights = { Fruits = 620, Combat = 340, Settings = 280, Configs = 260 } -- высота окна под контент
+local PageHeights = { Fruits = 446, Combat = 282, Settings = 208, Configs = 200 } -- высота окна для каждой вкладки
 local TAB_H = 34    -- высота одной вкладки в ленте
 local TAB_TOP = 38  -- отступ ленты сверху (под шапкой)
 local currentTab = "Fruits"
@@ -1430,7 +1430,8 @@ local Pages = {}
 local TabButtons = {}
 
 local function TargetHeight()
-    return PageHeights[currentTab] or 300
+    return (PageHeights[currentTab] or 300)
+        + (currentTab == "Fruits" and ExtraHeight or 0)
 end
 
 local function SwitchTab(name)
