@@ -1533,9 +1533,9 @@ sidebarImgBtn.Parent = sidebar
 
 local astolfoImgs = {
     "https://www.roblox.com/asset/?id=4528820693",
-    "https://www.roblox.com/asset/?id=12832725810",
-    "https://www.roblox.com/asset/?id=6712249628",
-    "https://www.roblox.com/asset/?id=17083298554",
+    "https://www.roblox.com/asset/?id=12832725777",
+    "https://www.roblox.com/asset/?id=6712249616",
+    "https://www.roblox.com/asset/?id=17083298521",
 }
 local astolfoIdx = 1
 
