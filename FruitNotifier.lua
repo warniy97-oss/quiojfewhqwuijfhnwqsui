@@ -421,7 +421,10 @@ local SoundList = {
 
 local MusicList = {
     { Name = "Гимн Украины", Id = "1837478410" },
-    { Name = "Гимн Украины (v2)", Id = "494399831" },
+    { Name = "Metamorphosis", Id = "15689451063" },
+    { Name = "Cowbell God", Id = "16190760005" },
+    { Name = "Infinite", Id = "16190784875" },
+    { Name = "Ghostblade Phonk", Id = "90441404910975" },
 }
 
 local MusicSound = nil
