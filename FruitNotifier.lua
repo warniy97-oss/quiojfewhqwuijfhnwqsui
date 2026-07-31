@@ -1467,11 +1467,23 @@ local function SwitchTab(name)
 end
 
 for i, name in ipairs(TabNames) do
-    local page = Instance.new("Frame")
+    local page = Instance.new("ScrollingFrame")
     page.Size = UDim2.new(1, 0, 1, 0)
     page.BackgroundTransparency = 1
+    page.BorderSizePixel = 0
+    page.ScrollBarThickness = 3
+    page.ScrollBarImageColor3 = ACCENT
+    page.CanvasSize = UDim2.new(0, 0, 0, 0)
+    page.AutomaticCanvasSize = Enum.AutomaticSize.Y
     page.Visible = (name == currentTab)
     page.Parent = content
+
+    local pagePadding = Instance.new("UIPadding")
+    pagePadding.PaddingLeft = UDim.new(0, 2)
+    pagePadding.PaddingRight = UDim.new(0, 2)
+    pagePadding.PaddingTop = UDim.new(0, 2)
+    pagePadding.PaddingBottom = UDim.new(0, 8)
+    pagePadding.Parent = page
 
     local pageLayout = Instance.new("UIListLayout")
     pageLayout.Padding = UDim.new(0, 4)
