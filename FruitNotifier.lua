@@ -1313,7 +1313,7 @@ if not gui.Parent then gui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
 -- Главное окно
 local main = Instance.new("Frame")
-main.Size = UDim2.new(0, WIN_W, 0, 446)
+main.Size = UDim2.new(0, WIN_W, 0, 620)
 main.Position = UDim2.new(0, 20, 0.3, 0)
 main.BackgroundColor3 = BG
 main.BorderSizePixel = 0
@@ -1388,7 +1388,7 @@ minimizeBtn.Parent = header
 -- ---------- Вкладки: вертикальная лента слева (GameSense) ----------
 local TabNames = { "Fruits", "Combat", "Settings", "Configs" }
 local TabIcons = { Fruits = "🍈", Combat = "🗡️", Settings = "⚙️", Configs = "💾" }
-local PageHeights = { Fruits = 446, Combat = 446, Settings = 446, Configs = 446 } -- высота окна фиксированная, скролл внутри
+local PageHeights = { Fruits = 620, Combat = 340, Settings = 280, Configs = 260 } -- высота окна под контент
 local TAB_H = 34    -- высота одной вкладки в ленте
 local TAB_TOP = 38  -- отступ ленты сверху (под шапкой)
 local currentTab = "Fruits"
@@ -1430,8 +1430,7 @@ local Pages = {}
 local TabButtons = {}
 
 local function TargetHeight()
-    return (PageHeights[currentTab] or 300)
-        + (currentTab == "Fruits" and ExtraHeight or 0)
+    return PageHeights[currentTab] or 300
 end
 
 local function SwitchTab(name)
@@ -1466,31 +1465,17 @@ local function SwitchTab(name)
 end
 
 for i, name in ipairs(TabNames) do
-    local page = Instance.new("ScrollingFrame")
+    local page = Instance.new("Frame")
     page.Size = UDim2.new(1, 0, 1, 0)
     page.BackgroundTransparency = 1
     page.Visible = (name == currentTab)
     page.Parent = content
-    page.ScrollBarThickness = 3
-    page.ScrollBarImageColor3 = ACCENT
-    page.CanvasSize = UDim2.new(0, 0, 0, 0)
-    page.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    page.ScrollingDirection = Enum.ScrollingDirection.Y
-    page.BorderSizePixel = 0
-    page.TopImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
-    page.BottomImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
-    page.MidImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
 
     local pageLayout = Instance.new("UIListLayout")
     pageLayout.Padding = UDim.new(0, 4)
     pageLayout.SortOrder = Enum.SortOrder.LayoutOrder
     pageLayout.FillDirection = Enum.FillDirection.Vertical
     pageLayout.Parent = page
-
-    local pagePad = Instance.new("UIPadding")
-    pagePad.PaddingTop = UDim.new(0, 4)
-    pagePad.PaddingBottom = UDim.new(0, 8)
-    pagePad.Parent = page
 
     Pages[name] = page
 
@@ -1619,25 +1604,25 @@ end
 CreateGroupHeader(Pages.Fruits, 1, "Notifications")
 CreateToggle("Уведомления", "Notifications", 2)
 CreateToggle("Звук", "NotifySound", 3)
-CreateSoundSelector("Тип звука", "NotifySoundId", SoundList, 3, Pages.Fruits)
-CreateToggle("Музыка", "MusicEnabled", 4, function(on)
+CreateSoundSelector("Тип звука", "NotifySoundId", SoundList, 4, Pages.Fruits)
+CreateToggle("Музыка", "MusicEnabled", 5, function(on)
     ToggleMusic()
 end)
-CreateSoundSelector("Трек", "MusicId", MusicList, 4, Pages.Fruits, function()
+CreateSoundSelector("Трек", "MusicId", MusicList, 6, Pages.Fruits, function()
     ChangeMusic()
 end)
-CreateToggle("Fruit ESP", "FruitESP", 4)
-CreateToggle("Трейсеры", "TracerLines", 5)
-CreateGroupHeader(Pages.Fruits, 6, "Farm")
-CreateToggle("Авто-полёт 🛫", "AutoTeleport", 7, function(on)
+CreateToggle("Fruit ESP", "FruitESP", 7)
+CreateToggle("Трейсеры", "TracerLines", 8)
+CreateGroupHeader(Pages.Fruits, 9, "Farm")
+CreateToggle("Авто-полёт 🛫", "AutoTeleport", 10, function(on)
     if on then
         FlyToNearest() -- включил тогл — сразу летим к ближайшему
     else
         StopTween()    -- выключил — останавливаем полёт
     end
 end)
-CreateToggle("Auto Store 🎒", "AutoStore", 8)
-local dropRow = CreateToggle("Выброс в море 🌊", "DropIfFull", 9)
+CreateToggle("Auto Store 🎒", "AutoStore", 11)
+local dropRow = CreateToggle("Выброс в море 🌊", "DropIfFull", 12)
 
 -- стрелка «доп. опции» на тогле выброса в море
 local dropArrow = Instance.new("TextButton")
@@ -1651,11 +1636,11 @@ dropArrow.Font = Enum.Font.GothamBold
 dropArrow.Parent = dropRow
 
 -- доп. опция выброса: скрыта, открывается стрелочкой «>»
-local flyToSeaRow = CreateToggle("   ↳ Лететь к морю ✈️", "FlyToSea", 10)
+local flyToSeaRow = CreateToggle("   ↳ Лететь к морю ✈️", "FlyToSea", 13)
 flyToSeaRow.Visible = false
 
-    CreateToggle("Авто-ролл 🎰", "AutoRoll", 11)
-    CreateToggle("Отладка 🐞", "DebugMode", 12, function(on)
+    CreateToggle("Авто-ролл 🎰", "AutoRoll", 14)
+    CreateToggle("Отладка 🐞", "DebugMode", 15, function(on)
         -- Сохраняем настройки при изменении режима отладки
         SaveConfig()
     end)
@@ -1834,7 +1819,7 @@ local function CreateSoundSelector(name, settingKey, list, order, page, onChange
 end
 
 -- Ползунок: лимит фруктов в стор
-CreateSlider(Pages.Fruits, 13, "Лимит стора: %d", "MaxStoreFruits", 1, 10)
+CreateSlider(Pages.Fruits, 16, "Лимит стора: %d", "MaxStoreFruits", 1, 10)
 
 -- ============ COMBAT 🗡️ ============
 -- Silent Aim на ближайшего игрока (радиус AimRange, 360°) с визуалом: зелёное
@@ -2037,7 +2022,7 @@ CreateToggle("💀 Авто-респавн", "AutoRespawn", 9, nil, Pages.Combat
 -- ===================================
 
 -- Заголовок группы «Действия» + кнопка ручного полёта
-CreateGroupHeader(Pages.Fruits, 13, "Actions")
+CreateGroupHeader(Pages.Fruits, 17, "Actions")
 local flyBtn = Instance.new("TextButton")
 flyBtn.Size = UDim2.new(1, 0, 0, 24)
 flyBtn.BackgroundColor3 = ACCENT
@@ -2045,7 +2030,7 @@ flyBtn.Text = "🛫 Лететь к ближайшему фрукту"
 flyBtn.TextColor3 = Color3.fromRGB(15, 15, 18)
 flyBtn.TextSize = 11
 flyBtn.Font = Enum.Font.GothamBold
-flyBtn.LayoutOrder = 14
+flyBtn.LayoutOrder = 18
 flyBtn.Parent = Pages.Fruits
 
 local flyCorner = Instance.new("UICorner")
@@ -2075,7 +2060,7 @@ sbOpenBtn.Text = "🌐 Server Browser"
 sbOpenBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
 sbOpenBtn.TextSize = 12
 sbOpenBtn.Font = Enum.Font.GothamBold
-sbOpenBtn.LayoutOrder = 15
+sbOpenBtn.LayoutOrder = 19
 sbOpenBtn.Parent = Pages.Fruits
 Instance.new("UICorner", sbOpenBtn).CornerRadius = UDim.new(0, 8)
 AddHover(sbOpenBtn, BG2)
@@ -2256,7 +2241,7 @@ bfOpenBtn.Text = "📦 BF Stock"
 bfOpenBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
 bfOpenBtn.TextSize = 12
 bfOpenBtn.Font = Enum.Font.GothamBold
-bfOpenBtn.LayoutOrder = 16
+bfOpenBtn.LayoutOrder = 20
 bfOpenBtn.Parent = Pages.Fruits
 Instance.new("UICorner", bfOpenBtn).CornerRadius = UDim.new(0, 8)
 AddHover(bfOpenBtn, BG2)
