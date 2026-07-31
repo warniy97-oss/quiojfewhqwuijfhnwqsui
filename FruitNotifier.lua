@@ -426,6 +426,7 @@ local MusicList = {
     { Name = "Cowbell God", Id = "16190760005" },
     { Name = "Infinite", Id = "16190784875" },
     { Name = "Ghostblade Phonk", Id = "90441404910975" },
+    { Name = "Манго Фонк", Id = "7255656410" },
 }
 
 local MusicSound = nil
