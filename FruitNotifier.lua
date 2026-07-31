@@ -1298,7 +1298,7 @@ local BG2 = Color3.fromRGB(26, 26, 32)      -- контейнеры / сайдб
 local BG3 = Color3.fromRGB(40, 40, 48)      -- подсветка при наведении
 local WIN_W = 318
 local SIDEBAR_W = 96                         -- ширина левой ленты вкладок
-local ExtraHeight = 0   -- добавка к высоте, когда открыты доп. опции выброса
+local ExtraHeight = 0   -- больше не используется (скролл)
 local ThemeToggles = {} -- чекбоксы тоглов для перекраски темы
 local Sliders = {}      -- ползунки (для перекраски темы и RefreshUI)
 local GroupHeaders = {} -- заголовки групп (для перекраски темой)
@@ -1388,7 +1388,7 @@ minimizeBtn.Parent = header
 -- ---------- Вкладки: вертикальная лента слева (GameSense) ----------
 local TabNames = { "Fruits", "Combat", "Settings", "Configs" }
 local TabIcons = { Fruits = "🍈", Combat = "🗡️", Settings = "⚙️", Configs = "💾" }
-local PageHeights = { Fruits = 446, Combat = 282, Settings = 208, Configs = 200 } -- высота окна для каждой вкладки
+local PageHeights = { Fruits = 446, Combat = 446, Settings = 446, Configs = 446 } -- высота окна фиксированная, скролл внутри
 local TAB_H = 34    -- высота одной вкладки в ленте
 local TAB_TOP = 38  -- отступ ленты сверху (под шапкой)
 local currentTab = "Fruits"
@@ -1466,16 +1466,31 @@ local function SwitchTab(name)
 end
 
 for i, name in ipairs(TabNames) do
-    local page = Instance.new("Frame")
+    local page = Instance.new("ScrollingFrame")
     page.Size = UDim2.new(1, 0, 1, 0)
     page.BackgroundTransparency = 1
     page.Visible = (name == currentTab)
     page.Parent = content
+    page.ScrollBarThickness = 3
+    page.ScrollBarImageColor3 = ACCENT
+    page.CanvasSize = UDim2.new(0, 0, 0, 0)
+    page.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    page.ScrollingDirection = Enum.ScrollingDirection.Y
+    page.BorderSizePixel = 0
+    page.TopImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
+    page.BottomImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
+    page.MidImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
 
     local pageLayout = Instance.new("UIListLayout")
     pageLayout.Padding = UDim.new(0, 4)
     pageLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    pageLayout.FillDirection = Enum.FillDirection.Vertical
     pageLayout.Parent = page
+
+    local pagePad = Instance.new("UIPadding")
+    pagePad.PaddingTop = UDim.new(0, 4)
+    pagePad.PaddingBottom = UDim.new(0, 8)
+    pagePad.Parent = page
 
     Pages[name] = page
 
