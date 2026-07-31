@@ -1513,8 +1513,8 @@ end
 
 -- Картинка под вкладками в сайдбаре
 local sidebarImg = Instance.new("ImageLabel")
-sidebarImg.Size = UDim2.new(0, SIDEBAR_W - 20, 0, SIDEBAR_W - 20)
-sidebarImg.Position = UDim2.new(0.5, -(SIDEBAR_W - 20) / 2, 0, #TabNames * TAB_H + 10)
+sidebarImg.Size = UDim2.new(1, -12, 1, -(#TabNames * TAB_H + 16))
+sidebarImg.Position = UDim2.new(0, 6, 0, #TabNames * TAB_H + 8)
 sidebarImg.BackgroundTransparency = 1
 sidebarImg.ScaleType = Enum.ScaleType.Fit
 sidebarImg.Image = "rbxassetid://4528820699"
