@@ -1317,7 +1317,7 @@ main.Size = UDim2.new(0, WIN_W, 0, 446)
 main.Position = UDim2.new(0, 20, 0.3, 0)
 main.BackgroundColor3 = BG
 main.BorderSizePixel = 0
-main.ClipsDescendants = false
+main.ClipsDescendants = true
 main.Parent = gui
 
 local corner = Instance.new("UICorner")
