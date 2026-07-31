@@ -545,6 +545,8 @@ local function ResetConfig()
 end
 
 LoadConfig() -- подхватываем сохранённый конфиг при запуске
+if Settings.MusicId < 1 or Settings.MusicId > #MusicList then Settings.MusicId = 1 end
+if Settings.NotifySoundId < 1 or Settings.NotifySoundId > #SoundList then Settings.NotifySoundId = 1 end
 if Settings.MusicEnabled then ToggleMusic() end
 -- ===================================
 
