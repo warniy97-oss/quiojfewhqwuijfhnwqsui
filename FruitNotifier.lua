@@ -382,6 +382,9 @@ end
 local Settings = {
     Notifications = true,   -- уведомление при спавне фрукта
     NotifySound = true,     -- звук уведомления
+    NotifySoundId = 1,      -- индекс звука (1-5)
+    MusicEnabled = false,   -- фоновая музыка
+    MusicId = 1,            -- индекс музыки
     FruitESP = true,        -- ESP на фрукты (имя + дистанция)
     TracerLines = true,     -- линия от низа экрана к фрукту
     AutoTeleport = false,   -- 🛫 авто-полёт к фрукту
@@ -405,6 +408,30 @@ local Settings = {
 }
 -- =============================================
 
+local SoundList = {
+    { Name = "Уведомление", Id = "4590662766" },
+    { Name = "Динь", Id = "6042053626" },
+    { Name = "Классика", Id = "130787889" },
+    { Name = "Приятный", Id = "6518811692" },
+    { Name = "Роблокс", Id = "5766244233" },
+    { Name = "Secret", Id = "73962744404254" },
+    { Name = "Warniy", Id = "82951257906837" },
+    { Name = "WarniyPRIME", Id = "93923991230215" },
+}
+
+local MusicList = {
+    { Name = "Гимн России", Id = "9040163991" },
+    { Name = "Kalinka", Id = "1845924062" },
+    { Name = "Soviet March", Id = "1841140365" },
+    { Name = "Hard Bass Russian", Id = "1478734728" },
+    { Name = "Russian Hard Bass 2", Id = "1527688465" },
+    { Name = "Священная война", Id = "754859317667123" },
+    { Name = "Лето и арбалеты", Id = "18982131020" },
+    { Name = "Москва", Id = "132973772452511" },
+}
+
+local MusicSound = nil
+
 local TrackedFruits = {}
 local SeenFruits = {}
 
@@ -421,11 +448,46 @@ local function Notify(title, text, duration)
     if Settings.NotifySound then
         pcall(function()
             local s = Instance.new("Sound", Workspace)
-            s.SoundId = "rbxassetid://4590662766"
+            local soundData = SoundList[Settings.NotifySoundId] or SoundList[1]
+            s.SoundId = "rbxassetid://" .. soundData.Id
             s.Volume = 2
             s:Play()
             game:GetService("Debris"):AddItem(s, 3)
         end)
+    end
+end
+
+local function StartMusic()
+    if MusicSound then return end
+    local musicData = MusicList[Settings.MusicId] or MusicList[1]
+    MusicSound = Instance.new("Sound")
+    MusicSound.SoundId = "rbxassetid://" .. musicData.Id
+    MusicSound.Volume = 0.5
+    MusicSound.Looped = true
+    MusicSound.Parent = Workspace
+    MusicSound:Play()
+end
+
+local function StopMusic()
+    if MusicSound then
+        MusicSound:Stop()
+        MusicSound:Destroy()
+        MusicSound = nil
+    end
+end
+
+local function ToggleMusic()
+    if Settings.MusicEnabled then
+        StartMusic()
+    else
+        StopMusic()
+    end
+end
+
+local function ChangeMusic()
+    StopMusic()
+    if Settings.MusicEnabled then
+        StartMusic()
     end
 end
 
@@ -486,6 +548,7 @@ local function ResetConfig()
 end
 
 LoadConfig() -- подхватываем сохранённый конфиг при запуске
+if Settings.MusicEnabled then ToggleMusic() end
 -- ===================================
 
 -- Проверка: является ли объект фруктом
@@ -1541,6 +1604,13 @@ end
 CreateGroupHeader(Pages.Fruits, 1, "Notifications")
 CreateToggle("Уведомления", "Notifications", 2)
 CreateToggle("Звук", "NotifySound", 3)
+CreateSoundSelector("Тип звука", "NotifySoundId", SoundList, 3, Pages.Fruits)
+CreateToggle("Музыка", "MusicEnabled", 4, function(on)
+    ToggleMusic()
+end)
+CreateSoundSelector("Трек", "MusicId", MusicList, 4, Pages.Fruits, function()
+    ChangeMusic()
+end)
 CreateToggle("Fruit ESP", "FruitESP", 4)
 CreateToggle("Трейсеры", "TracerLines", 5)
 CreateGroupHeader(Pages.Fruits, 6, "Farm")
@@ -1659,6 +1729,93 @@ local function CreateSlider(page, order, labelFormat, settingKey, minV, maxV)
     end)
 
     table.insert(Sliders, { Fill = fill, Refresh = Refresh })
+end
+
+local function CreateSoundSelector(name, settingKey, list, order, page, onChanged)
+    local row = Instance.new("TextButton")
+    row.Size = UDim2.new(1, 0, 0, 22)
+    row.BackgroundTransparency = 1
+    row.Text = ""
+    row.AutoButtonColor = false
+    row.LayoutOrder = order
+    row.Parent = page or Pages.Fruits
+
+    local leftBtn = Instance.new("TextButton")
+    leftBtn.Size = UDim2.new(0, 18, 0, 18)
+    leftBtn.Position = UDim2.new(0, 0, 0.5, -9)
+    leftBtn.BackgroundColor3 = BG2
+    leftBtn.BorderSizePixel = 0
+    leftBtn.Text = "<"
+    leftBtn.TextColor3 = ACCENT
+    leftBtn.TextSize = 12
+    leftBtn.Font = Enum.Font.GothamBold
+    leftBtn.Parent = row
+    Instance.new("UICorner", leftBtn).CornerRadius = UDim.new(0, 3)
+
+    local rightBtn = Instance.new("TextButton")
+    rightBtn.Size = UDim2.new(0, 18, 0, 18)
+    rightBtn.Position = UDim2.new(0, 140, 0.5, -9)
+    rightBtn.BackgroundColor3 = BG2
+    rightBtn.BorderSizePixel = 0
+    rightBtn.Text = ">"
+    rightBtn.TextColor3 = ACCENT
+    rightBtn.TextSize = 12
+    rightBtn.Font = Enum.Font.GothamBold
+    rightBtn.Parent = row
+    Instance.new("UICorner", rightBtn).CornerRadius = UDim.new(0, 3)
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0, 70, 0, 18)
+    label.Position = UDim2.new(0, 22, 0.5, -9)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.fromRGB(205, 205, 214)
+    label.TextSize = 11
+    label.Font = Enum.Font.Gotham
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = row
+
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(1, -162, 0, 18)
+    nameLabel.Position = UDim2.new(0, 162, 0.5, -9)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.TextColor3 = Color3.fromRGB(140, 140, 155)
+    nameLabel.TextSize = 11
+    nameLabel.Font = Enum.Font.Gotham
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.Parent = row
+
+    local function Refresh()
+        local idx = Settings[settingKey]
+        label.Text = ("%d/%d"):format(idx, #list)
+        nameLabel.Text = list[idx] and list[idx].Name or ""
+    end
+
+    leftBtn.MouseButton1Click:Connect(function()
+        Settings[settingKey] = Settings[settingKey] - 1
+        if Settings[settingKey] < 1 then Settings[settingKey] = #list end
+        Refresh()
+        pcall(function() SaveConfig() end)
+        if onChanged then pcall(onChanged) end
+    end)
+
+    rightBtn.MouseButton1Click:Connect(function()
+        Settings[settingKey] = Settings[settingKey] + 1
+        if Settings[settingKey] > #list then Settings[settingKey] = 1 end
+        Refresh()
+        pcall(function() SaveConfig() end)
+        if onChanged then pcall(onChanged) end
+    end)
+
+    row.MouseButton1Click:Connect(function()
+        Settings[settingKey] = Settings[settingKey] + 1
+        if Settings[settingKey] > #list then Settings[settingKey] = 1 end
+        Refresh()
+        pcall(function() SaveConfig() end)
+        if onChanged then pcall(onChanged) end
+    end)
+
+    Refresh()
+    table.insert(Sliders, { Refresh = Refresh })
 end
 
 -- Ползунок: лимит фруктов в стор
