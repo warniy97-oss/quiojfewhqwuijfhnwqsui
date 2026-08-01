@@ -1340,6 +1340,8 @@ end)
 -- ============ АВТО-ПОИСК ЛЕВИАФАНА 🐋 ============
 local LeviathanFlying = false
 local LeviathanFlightId = 0
+local LEVIATHAN_SPEED = 325
+local LEVIATHAN_HEIGHT = 50
 
 local function StopLeviathanSearch()
     LeviathanFlightId = LeviathanFlightId + 1
@@ -1353,7 +1355,7 @@ local function StartLeviathanSearch()
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if not char or not hrp or not hum or hum.Health <= 0 then
-        Notify("🐋 Левиафан", "Персонаж не найден или мёртв", 4)
+        Notify("🐋 Левиафан", "Персонаж не найден", 4)
         return
     end
 
@@ -1368,7 +1370,10 @@ local function StartLeviathanSearch()
     LeviathanFlightId = LeviathanFlightId + 1
     local myId = LeviathanFlightId
 
-    Notify("🐋 Левиафан", "Начинаю поиск! 325 studs/сек, высота 50 над водой", 5)
+    -- Переводим физику в Physics чтобы не мешала
+    pcall(function() hum:ChangeState(Enum.HumanoidStateType.Physics) end)
+
+    Notify("🐋 Левиафан", "Лечу! 325 studs/сек, высота 50 над водой", 5)
 
     task.spawn(function()
         while LeviathanFlying and LeviathanFlightId == myId do
@@ -1378,56 +1383,55 @@ local function StartLeviathanSearch()
             hrp = char and char:FindFirstChild("HumanoidRootPart")
             hum = char and char:FindFirstChildOfClass("Humanoid")
             if not char or not hrp or not hum or hum.Health <= 0 then
-                Notify("🐋 Левиафан", "Персонаж умер — останавливаюсь", 4)
+                Notify("🐋 Левиафан", "Умер — стоп", 4)
                 break
             end
 
             local currentSeat = hum.SeatPart
             if not currentSeat or not currentSeat:IsA("VehicleSeat") then
-                Notify("🐋 Левиафан", "Вышел из лодки — останавливаюсь", 4)
+                Notify("🐋 Левиафан", "Вышел из лодки — стоп", 4)
                 break
             end
 
-            local leviathanFound = false
-            for _, obj in ipairs(workspace:GetDescendants()) do
-                if obj:IsA("Model") or obj:IsA("Part") then
-                    local nameLower = string.lower(obj.Name)
-                    if string.find(nameLower, "leviathan") then
-                        leviathanFound = true
-                        break
-                    end
-                end
-            end
-
-            if leviathanFound then
-                Notify("🐋 ЛЕВИАФАН НАЙДЕН!", "Левиафан впереди!", 8)
-                Settings.LeviathanSearch = false
-                break
-            end
-
-            local speed = 325
-            local heightAboveWater = 50
-
-            local rayOrigin = currentSeat.Position
-            local rayDir = Vector3.new(0, -200, 0)
+            -- Raycast вниз чтобы найти поверхность воды
             local rayParams = RaycastParams.new()
             rayParams.FilterDescendantsInstances = {char}
             rayParams.IgnoreWater = false
-
-            local rayResult = workspace:Raycast(rayOrigin, rayDir, rayParams)
+            local rayResult = workspace:Raycast(hrp.Position, Vector3.new(0, -300, 0), rayParams)
             local waterY = rayResult and rayResult.Position.Y or 0
-            local targetY = waterY + heightAboveWater
+            local targetY = waterY + LEVIATHAN_HEIGHT
 
-            local moveStep = speed * dt
-            local forward = currentSeat.CFrame.LookVector
-            local currentPos = currentSeat.Position
-            local newPos = currentPos + forward * moveStep
-            local newY = currentPos.Y + (targetY - currentPos.Y) * math.min(dt * 3, 1)
+            -- Летим HRP (как в TeleportToFruit — лодка следует за HRP через сиденье)
+            local forward = hrp.CFrame.LookVector
+            local moveStep = LEVIATHAN_SPEED * dt
+            local newPos = hrp.Position + forward * moveStep
+            local newY = targetY
 
-            currentSeat.CFrame = CFrame.new(newPos.X, newY, newPos.Z) * (currentSeat.CFrame - currentSeat.CFrame.Position)
+            -- Сохраняем поворот
+            local rot = hrp.CFrame - hrp.CFrame.Position
+            hrp.CFrame = CFrame.new(newPos.X, newY, newPos.Z) * rot
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
+
+            -- Ноклип для всех частей персонажа + лодки
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then part.CanCollide = false end
+            end
+            local vehicleModel = currentSeat.Parent
+            if vehicleModel and vehicleModel:IsA("Model") then
+                for _, part in ipairs(vehicleModel:GetDescendants()) do
+                    if part:IsA("BasePart") then part.CanCollide = false end
+                end
+            end
         end
 
         LeviathanFlying = false
+        -- Восстанавливаем физику
+        pcall(function()
+            local c = LocalPlayer.Character
+            local h = c and c:FindFirstChildOfClass("Humanoid")
+            if h then h:ChangeState(Enum.HumanoidStateType.GettingUp) end
+        end)
     end)
 end
 
