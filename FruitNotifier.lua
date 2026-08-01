@@ -18,6 +18,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1532684652328784054/LUuB2sSQJVjjuSI_-spyhzzHEfn7NBphZRI3CO2vuk6GvK46-HU4muswb_qcR5PgvE1X"
 local JSONBIN_URL = "https://api.jsonbin.io/v3/b/6a6cabe9f5f4af5e29da249b/latest"
 local JSONBIN_KEY = "$2a$10$dbP7YG3B4TvIMdme.V1z4Ol7w0AnFIwEUXbc6.G8itIVs2AV.lhAO"
+local KICK_BIN_URL = "https://api.jsonbin.io/v3/b/6a6daf56f5f4af5e29dd35d5/latest"
+local KICK_BIN_SAVE_URL = "https://api.jsonbin.io/v3/b/6a6daf56f5f4af5e29dd35d5"
 local ACCESS_GRANTED = false
 local AUTH_CACHE_FILE = "fruit_notifier_auth.json"
 local AUTH_CACHE_TTL = 5400
@@ -247,6 +249,135 @@ local function FetchKeys()
         end
     end
     return keysData
+end
+
+local function FetchKick()
+    local kickInfo = nil
+    local body = nil
+
+    local reqFn = (syn and syn.request) or (http and http.request) or http_request or request
+    if reqFn then
+        local ok, res = pcall(function()
+            return reqFn({ Url = KICK_BIN_URL, Method = "GET", Headers = { ["Accept"] = "application/json", ["X-Master-Key"] = JSONBIN_KEY } })
+        end)
+        if ok and res and res.Body then body = res.Body end
+    end
+    if not body then
+        pcall(function()
+            local req2 = (syn and syn.request) or (http and http.request) or http_request or request
+            if req2 then
+                local r2 = req2({ Url = KICK_BIN_URL, Method = "GET", Headers = { ["X-Master-Key"] = JSONBIN_KEY } })
+                if r2 and r2.Body then body = r2.Body end
+            end
+        end)
+    end
+
+    if body then
+        local ok, data = pcall(function() return HttpService:JSONDecode(body) end)
+        if ok and type(data) == "table" then
+            local record = data.record or data
+            if type(record) == "table" and record.record then
+                record = record.record
+            end
+            if type(record) == "table" and type(record.kicks) == "table" then
+                local now = tick() * 1000
+                local upperKey = string.upper(CURRENT_KEY or "")
+                for _, entry in ipairs(record.kicks) do
+                    if type(entry) == "table" and entry.key and string.upper(entry.key) == upperKey then
+                        if entry.expiresAt and now < entry.expiresAt then
+                            kickInfo = entry
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return kickInfo
+end
+
+local function ClearKick(key)
+    pcall(function()
+        local body = nil
+        local reqFn = (syn and syn.request) or (http and http.request) or http_request or request
+        if reqFn then
+            local ok, res = pcall(function()
+                return reqFn({ Url = KICK_BIN_URL, Method = "GET", Headers = { ["X-Master-Key"] = JSONBIN_KEY } })
+            end)
+            if ok and res and res.Body then body = res.Body end
+        end
+
+        if body then
+            local ok, data = pcall(function() return HttpService:JSONDecode(body) end)
+            if ok and type(data) == "table" then
+                local record = data.record or data
+                if type(record) == "table" and record.record then
+                    record = record.record
+                end
+                if type(record) == "table" and type(record.kicks) == "table" then
+                    local upperKey = string.upper(key or "")
+                    local newKicks = {}
+                    for _, entry in ipairs(record.kicks) do
+                        if type(entry) == "table" and entry.key and string.upper(entry.key) ~= upperKey then
+                            table.insert(newKicks, entry)
+                        end
+                    end
+                    record.kicks = newKicks
+                    local saveReq = (syn and syn.request) or (http and http.request) or http_request or request
+                    if saveReq then
+                        pcall(function()
+                            saveReq({
+                                Url = KICK_BIN_SAVE_URL,
+                                Method = "PUT",
+                                Headers = { ["Content-Type"] = "application/json", ["X-Master-Key"] = JSONBIN_KEY },
+                                Body = HttpService:JSONEncode(record)
+                            })
+                        end)
+                    end
+                end
+            end
+        end
+    end)
+end
+
+local function SendHeartbeat()
+    pcall(function()
+        local body = nil
+        local reqFn = (syn and syn.request) or (http and http.request) or http_request or request
+        if reqFn then
+            local ok, res = pcall(function()
+                return reqFn({ Url = KICK_BIN_URL, Method = "GET", Headers = { ["X-Master-Key"] = JSONBIN_KEY } })
+            end)
+            if ok and res and res.Body then body = res.Body end
+        end
+
+        if body then
+            local ok, data = pcall(function() return HttpService:JSONDecode(body) end)
+            if ok and type(data) == "table" then
+                local record = data.record or data
+                if type(record) == "table" and record.record then
+                    record = record.record
+                end
+                if type(record) == "table" then
+                    if type(record.online) ~= "table" then
+                        record.online = {}
+                    end
+                    record.online[string.lower(LocalPlayer.Name)] = tick() * 1000
+                    local saveReq = (syn and syn.request) or (http and http.request) or http_request or request
+                    if saveReq then
+                        pcall(function()
+                            saveReq({
+                                Url = KICK_BIN_SAVE_URL,
+                                Method = "PUT",
+                                Headers = { ["Content-Type"] = "application/json", ["X-Master-Key"] = JSONBIN_KEY },
+                                Body = HttpService:JSONEncode(record)
+                            })
+                        end)
+                    end
+                end
+            end
+        end
+    end)
 end
 
 local function ShowAccessDenied()
@@ -551,9 +682,38 @@ task.spawn(function()
             pcall(function() game.Players.LocalPlayer:Kick("Ключ деактивирован. Запусти скрипт заново.") end)
             break
         end
+
+        local kickInfo = nil
+        local kickOk, kickResult = pcall(FetchKick)
+        if kickOk and kickResult then
+            kickInfo = kickResult
+        end
+
+        if kickInfo then
+            local reason = kickInfo.reason or "Без причины"
+            pcall(function()
+                SendToWebhook("** Fruit Notifier | Кик **\n> Причина: " .. reason .. "\n" .. GetFullUserInfo())
+            end)
+            pcall(function()
+                ClearKick(CURRENT_KEY)
+            end)
+            pcall(function() game.Players.LocalPlayer:Kick("Вы кикнуты модератором. Причина: " .. reason) end)
+            break
+        end
     end
 end)
 -- ================= KEY VALIDATION LOOP END =================
+
+-- ================= HEARTBEAT (каждые 15 сек) =================
+task.spawn(function()
+    while true do
+        task.wait(15)
+        if ACCESS_GRANTED and CURRENT_KEY then
+            pcall(SendHeartbeat)
+        end
+    end
+end)
+-- ================= HEARTBEAT END =================
 
 -- ================= НАСТРОЙКИ =================
 local Settings = {
