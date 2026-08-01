@@ -283,21 +283,18 @@ local function FetchKick()
                 record = record.record
             end
             if type(record) == "table" and type(record.kicks) == "table" then
-                local now = tick() * 1000
                 local upperKey = string.upper(CURRENT_KEY or "")
                 for _, entry in ipairs(record.kicks) do
                     if type(entry) == "table" and entry.key and string.upper(entry.key) == upperKey then
-                        if entry.expiresAt and now < entry.expiresAt then
-                            kickInfo = entry
-                            break
-                        end
+                        kickInfo = entry
+                        break
                     end
                 end
                 if not kickInfo and #record.kicks > 0 then
                     print("[FruitNotifier DEBUG] Киков в бине: " .. #record.kicks .. ", мой ключ: " .. upperKey)
                     for _, entry in ipairs(record.kicks) do
                         if type(entry) == "table" then
-                            print("[FruitNotifier DEBUG] Кик: key=" .. tostring(entry.key) .. " expiresAt=" .. tostring(entry.expiresAt) .. " now=" .. now)
+                            print("[FruitNotifier DEBUG] Кик: key=" .. tostring(entry.key) .. " reason=" .. tostring(entry.reason))
                         end
                     end
                 end
