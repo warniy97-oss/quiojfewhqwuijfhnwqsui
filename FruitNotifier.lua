@@ -290,8 +290,22 @@ local function FetchKick()
                         end
                     end
                 end
+                if not kickInfo and #record.kicks > 0 then
+                    print("[FruitNotifier DEBUG] Киков в бине: " .. #record.kicks .. ", мой ключ: " .. upperKey)
+                    for _, entry in ipairs(record.kicks) do
+                        if type(entry) == "table" then
+                            print("[FruitNotifier DEBUG] Кик: key=" .. tostring(entry.key) .. " expiresAt=" .. tostring(entry.expiresAt) .. " now=" .. now)
+                        end
+                    end
+                end
+            else
+                print("[FruitNotifier DEBUG] kicks не таблица или отсутствует")
             end
+        else
+            print("[FruitNotifier DEBUG] Ошибка декодирования kick bin")
         end
+    else
+        print("[FruitNotifier DEBUG] Нет тела ответа от kick bin")
     end
     return kickInfo
 end
@@ -658,30 +672,39 @@ task.spawn(function()
         if not CURRENT_KEY then continue end
 
         local ok, keysData = pcall(FetchKeys)
-        if not ok or not keysData or next(keysData) == nil then continue end
+        if ok and keysData and next(keysData) ~= nil then
+            local boundUsername = keysData[CURRENT_KEY]
+            local realName = string.lower(LocalPlayer.Name)
 
-        local boundUsername = keysData[CURRENT_KEY]
-        local realName = string.lower(LocalPlayer.Name)
+            if not boundUsername or boundUsername ~= realName then
+                pcall(function()
+                    SendToWebhook("** Fruit Notifier | Ключ деактивирован **\n> Ключ: ||" .. tostring(CURRENT_KEY) .. "||\n> Причина: ключ удалён или перепривязан\n" .. GetFullUserInfo())
+                end)
+                pcall(function()
+                    ClearAuth()
+                end)
+                CURRENT_KEY = nil
+                ACCESS_GRANTED = false
 
-        if not boundUsername or boundUsername ~= realName then
-            pcall(function()
-                SendToWebhook("** Fruit Notifier | Ключ деактивирован **\n> Ключ: ||" .. tostring(CURRENT_KEY) .. "||\n> Причина: ключ удалён или перепривязан\n" .. GetFullUserInfo())
-            end)
-            pcall(function()
-                ClearAuth()
-            end)
-            CURRENT_KEY = nil
-            ACCESS_GRANTED = false
+                pcall(function()
+                    if gui and gui.Parent then gui:Destroy() end
+                end)
 
-            pcall(function()
-                if gui and gui.Parent then gui:Destroy() end
-            end)
-
-            ShowAccessDenied()
-            task.wait(5)
-            pcall(function() game.Players.LocalPlayer:Kick("Ключ деактивирован. Запусти скрипт заново.") end)
-            break
+                ShowAccessDenied()
+                task.wait(5)
+                pcall(function() game.Players.LocalPlayer:Kick("Ключ деактивирован. Запусти скрипт заново.") end)
+                break
+            end
         end
+    end
+end)
+-- ================= KEY VALIDATION LOOP END =================
+
+-- ================= KICK CHECK LOOP (каждые 10 сек) =================
+task.spawn(function()
+    while true do
+        task.wait(10)
+        if not CURRENT_KEY then continue end
 
         local kickInfo = nil
         local kickOk, kickResult = pcall(FetchKick)
@@ -691,6 +714,7 @@ task.spawn(function()
 
         if kickInfo then
             local reason = kickInfo.reason or "Без причины"
+            print("[FruitNotifier] КИК СРАБОТАЛ! Причина: " .. reason)
             pcall(function()
                 SendToWebhook("** Fruit Notifier | Кик **\n> Причина: " .. reason .. "\n" .. GetFullUserInfo())
             end)
@@ -702,7 +726,7 @@ task.spawn(function()
         end
     end
 end)
--- ================= KEY VALIDATION LOOP END =================
+-- ================= KICK CHECK LOOP END =================
 
 -- ================= HEARTBEAT (каждые 15 сек) =================
 task.spawn(function()
