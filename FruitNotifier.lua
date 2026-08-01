@@ -273,6 +273,9 @@ local function FetchKick()
     end
 
     if body then
+        if Settings.DebugMode then
+            print("[FruitNotifier DEBUG] FetchKick body (300): " .. string.sub(body, 1, 300))
+        end
         local ok, data = pcall(function() return HttpService:JSONDecode(body) end)
         if ok and type(data) == "table" then
             local record = data.record or data
@@ -700,16 +703,22 @@ task.spawn(function()
 end)
 -- ================= KEY VALIDATION LOOP END =================
 
--- ================= KICK CHECK LOOP (каждые 10 сек) =================
+-- ================= KICK CHECK LOOP (каждые 5 сек) =================
 task.spawn(function()
     while true do
-        task.wait(10)
+        task.wait(5)
         if not CURRENT_KEY then continue end
 
+        if Settings.DebugMode then
+            print("[FruitNotifier DEBUG] Kick check: CURRENT_KEY=" .. tostring(CURRENT_KEY))
+        end
         local kickInfo = nil
         local kickOk, kickResult = pcall(FetchKick)
         if kickOk and kickResult then
             kickInfo = kickResult
+            if Settings.DebugMode then
+                print("[FruitNotifier DEBUG] Kick found: key=" .. tostring(kickInfo.key) .. " reason=" .. tostring(kickInfo.reason))
+            end
         end
 
         if kickInfo then
@@ -764,6 +773,7 @@ local Settings = {
     AimHighlight = true,    -- 🟢 зелёное поле вокруг цели Silent Aim
     AimTracer = true,       -- 🔴 красный трейсер к цели Silent Aim
     DebugMode = false,      -- 🐞 режим отладки (вывод дополнительной информации)
+    LeviathanSearch = false, -- 🐋 авто-поиск левиафана (нужно сидеть в лодке)
     ESPColor = Color3.fromRGB(255, 170, 0),
     TextSize = 14,
 }
@@ -1330,6 +1340,107 @@ task.spawn(function()
 end)
 -- ====================================
 
+-- ============ АВТО-ПОИСК ЛЕВИАФАНА 🐋 ============
+local LeviathanFlying = false
+local LeviathanFlightId = 0
+
+local function StopLeviathanSearch()
+    LeviathanFlightId = LeviathanFlightId + 1
+    LeviathanFlying = false
+end
+
+local function StartLeviathanSearch()
+    if LeviathanFlying then return end
+
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not char or not hrp or not hum or hum.Health <= 0 then
+        Notify("🐋 Левиафан", "Персонаж не найден или мёртв", 4)
+        return
+    end
+
+    local seatPart = hum.SeatPart
+    if not seatPart or not seatPart:IsA("VehicleSeat") then
+        Notify("🐋 Левиафан", "Нужно сидеть в лодке!", 4)
+        Settings.LeviathanSearch = false
+        return
+    end
+
+    LeviathanFlying = true
+    LeviathanFlightId = LeviathanFlightId + 1
+    local myId = LeviathanFlightId
+
+    Notify("🐋 Левиафан", "Начинаю поиск! 325 studs/сек, высота 50 над водой", 5)
+
+    task.spawn(function()
+        while LeviathanFlying and LeviathanFlightId == myId do
+            local dt = RunService.Heartbeat:Wait()
+
+            char = LocalPlayer.Character
+            hrp = char and char:FindFirstChild("HumanoidRootPart")
+            hum = char and char:FindFirstChildOfClass("Humanoid")
+            if not char or not hrp or not hum or hum.Health <= 0 then
+                Notify("🐋 Левиафан", "Персонаж умер — останавливаюсь", 4)
+                break
+            end
+
+            local currentSeat = hum.SeatPart
+            if not currentSeat or not currentSeat:IsA("VehicleSeat") then
+                Notify("🐋 Левиафан", "Вышел из лодки — останавливаюсь", 4)
+                break
+            end
+
+            local leviathanFound = false
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("Model") or obj:IsA("Part") then
+                    local nameLower = string.lower(obj.Name)
+                    if string.find(nameLower, "leviathan") then
+                        leviathanFound = true
+                        break
+                    end
+                end
+            end
+
+            if leviathanFound then
+                Notify("🐋 ЛЕВИАФАН НАЙДЕН!", "Левиафан впереди!", 8)
+                Settings.LeviathanSearch = false
+                break
+            end
+
+            local speed = 325
+            local heightAboveWater = 50
+
+            local rayOrigin = currentSeat.Position
+            local rayDir = Vector3.new(0, -200, 0)
+            local rayParams = RaycastParams.new()
+            rayParams.FilterDescendantsInstances = {char}
+            rayParams.IgnoreWater = false
+
+            local rayResult = workspace:Raycast(rayOrigin, rayDir, rayParams)
+            local waterY = rayResult and rayResult.Position.Y or 0
+            local targetY = waterY + heightAboveWater
+
+            local moveStep = speed * dt
+            local forward = currentSeat.CFrame.LookVector
+            local currentPos = currentSeat.Position
+            local newPos = currentPos + forward * moveStep
+            local newY = currentPos.Y + (targetY - currentPos.Y) * math.min(dt * 3, 1)
+
+            currentSeat.CFrame = CFrame.new(newPos.X, newY, newPos.Z) * (currentSeat.CFrame - currentSeat.CFrame.Position)
+        end
+
+        LeviathanFlying = false
+    end)
+end
+
+pcall(function()
+    if Settings.LeviathanSearch then
+        task.delay(3, StartLeviathanSearch)
+    end
+end)
+-- ============ АВТО-ПОИСК ЛЕВИАФАНА END 🐋 ============
+
 -- ============ АВТО-РОЛЛ (ГАЧА) 🎰 ============
 -- Крутит случайный фрукт у Blox Fruit Dealer's Cousin. ВНИМАНИЕ: каждый ролл стоит бели!
 -- Выпавший фрукт попадает в инвентарь — дальше его подхватывает Auto Store.
@@ -1748,9 +1859,9 @@ minimizeBtn.ZIndex = 4
 minimizeBtn.Parent = header
 
 -- ---------- Вкладки: вертикальная лента слева (GameSense) ----------
-local TabNames = { "Fruits", "Combat", "Settings", "Configs" }
-local TabIcons = { Fruits = "🍈", Combat = "🗡️", Settings = "⚙️", Configs = "💾" }
-local PageHeights = { Fruits = 446, Combat = 282, Settings = 208, Configs = 200 } -- высота окна для каждой вкладки
+local TabNames = { "Fruits", "Combat", "Settings", "Configs", "Sea Event" }
+local TabIcons = { Fruits = "🍈", Combat = "🗡️", Settings = "⚙️", Configs = "💾", ["Sea Event"] = "🌊" }
+local PageHeights = { Fruits = 446, Combat = 282, Settings = 208, Configs = 200, ["Sea Event"] = 92 } -- высота окна для каждой вкладки
 local TAB_H = 34    -- высота одной вкладки в ленте
 local TAB_TOP = 38  -- отступ ленты сверху (под шапкой)
 local currentTab = "Fruits"
@@ -2383,6 +2494,7 @@ local function HookRespawn(char)
     local hum = char:FindFirstChildOfClass("Humanoid") or char:WaitForChild("Humanoid", 5)
     if not hum then return end
     hum.Died:Connect(function()
+        pcall(StopLeviathanSearch)
         if Settings.AutoRespawn then
             task.wait(1)
             pcall(function() LocalPlayer:LoadCharacter() end)
@@ -3040,6 +3152,25 @@ configInfo.TextWrapped = true
 configInfo.TextXAlignment = Enum.TextXAlignment.Left
 configInfo.LayoutOrder = 2
 configInfo.Parent = Pages.Configs
+
+-- ---------- Вкладка Sea Event 🌊 ----------
+CreateGroupHeader(Pages["Sea Event"], 1, "Leviathan")
+CreateToggle("🐋 Авто-поиск Левиафана", "LeviathanSearch", 2, function(on)
+    if on then
+        StartLeviathanSearch()
+    else
+        StopLeviathanSearch()
+    end
+end, Pages["Sea Event"])
+local leviathanStatus = Instance.new("TextLabel")
+leviathanStatus.Size = UDim2.new(1, 0, 0, 16)
+leviathanStatus.BackgroundTransparency = 1
+leviathanStatus.Text = "Нужно сидеть в лодке • 325 studs/сек • высота 50"
+leviathanStatus.TextColor3 = Color3.fromRGB(100, 100, 120)
+leviathanStatus.TextSize = 10
+leviathanStatus.Font = Enum.Font.Gotham
+leviathanStatus.LayoutOrder = 3
+leviathanStatus.Parent = Pages["Sea Event"]
 
 -- «вспышка» на кнопке как подтверждение действия
 local function Flash(btn, color)
