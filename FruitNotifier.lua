@@ -253,60 +253,43 @@ end
 
 local function FetchKick()
     local kickInfo = nil
-    local body = nil
 
     local reqFn = (syn and syn.request) or (http and http.request) or http_request or request
-    if reqFn then
-        local ok, res = pcall(function()
-            return reqFn({ Url = KICK_BIN_URL, Method = "GET", Headers = { ["Accept"] = "application/json", ["X-Master-Key"] = JSONBIN_KEY } })
-        end)
-        if ok and res and res.Body then body = res.Body end
-    end
-    if not body then
+    if not reqFn then return nil end
+
+    local ok, res = pcall(function()
+        return reqFn({ Url = KICK_BIN_URL, Method = "GET", Headers = { ["Accept"] = "application/json", ["X-Master-Key"] = JSONBIN_KEY } })
+    end)
+
+    if not ok or not res or not res.Body then
+        -- Вторая попытка без Accept
         pcall(function()
             local req2 = (syn and syn.request) or (http and http.request) or http_request or request
             if req2 then
                 local r2 = req2({ Url = KICK_BIN_URL, Method = "GET", Headers = { ["X-Master-Key"] = JSONBIN_KEY } })
-                if r2 and r2.Body then body = r2.Body end
+                if r2 and r2.Body then ok, res = true, r2 end
             end
         end)
     end
 
-    if body then
-        if Settings.DebugMode then
-            print("[FruitNotifier DEBUG] FetchKick body (300): " .. string.sub(body, 1, 300))
+    if not ok or not res or not res.Body then return nil end
+
+    local decodeOk, data = pcall(function() return HttpService:JSONDecode(res.Body) end)
+    if not decodeOk or type(data) ~= "table" then return nil end
+
+    local record = data.record or data
+    if type(record) == "table" and record.record then record = record.record end
+
+    if type(record) ~= "table" or type(record.kicks) ~= "table" then return nil end
+
+    local upperKey = string.upper(CURRENT_KEY or "")
+    for _, entry in ipairs(record.kicks) do
+        if type(entry) == "table" and entry.key and string.upper(entry.key) == upperKey then
+            kickInfo = entry
+            break
         end
-        local ok, data = pcall(function() return HttpService:JSONDecode(body) end)
-        if ok and type(data) == "table" then
-            local record = data.record or data
-            if type(record) == "table" and record.record then
-                record = record.record
-            end
-            if type(record) == "table" and type(record.kicks) == "table" then
-                local upperKey = string.upper(CURRENT_KEY or "")
-                for _, entry in ipairs(record.kicks) do
-                    if type(entry) == "table" and entry.key and string.upper(entry.key) == upperKey then
-                        kickInfo = entry
-                        break
-                    end
-                end
-                if not kickInfo and #record.kicks > 0 then
-                    print("[FruitNotifier DEBUG] Киков в бине: " .. #record.kicks .. ", мой ключ: " .. upperKey)
-                    for _, entry in ipairs(record.kicks) do
-                        if type(entry) == "table" then
-                            print("[FruitNotifier DEBUG] Кик: key=" .. tostring(entry.key) .. " reason=" .. tostring(entry.reason))
-                        end
-                    end
-                end
-            else
-                print("[FruitNotifier DEBUG] kicks не таблица или отсутствует")
-            end
-        else
-            print("[FruitNotifier DEBUG] Ошибка декодирования kick bin")
-        end
-    else
-        print("[FruitNotifier DEBUG] Нет тела ответа от kick bin")
     end
+
     return kickInfo
 end
 
@@ -665,12 +648,13 @@ AccessEvent.Event:Wait()
 end
 -- ================= ACCESS SYSTEM END 🔒 =================
 
--- ================= KEY VALIDATION LOOP (каждые 30 сек) =================
+-- ================= KEY + KICK VALIDATION LOOP (каждые 10 сек) =================
 task.spawn(function()
     while true do
-        task.wait(30)
+        task.wait(10)
         if not CURRENT_KEY then continue end
 
+        -- 1) Проверка ключа (РАБОТАЕТ — так было всегда)
         local ok, keysData = pcall(FetchKeys)
         if ok and keysData and next(keysData) ~= nil then
             local boundUsername = keysData[CURRENT_KEY]
@@ -696,43 +680,36 @@ task.spawn(function()
                 break
             end
         end
-    end
-end)
--- ================= KEY VALIDATION LOOP END =================
 
--- ================= KICK CHECK LOOP (каждые 5 сек) =================
-task.spawn(function()
-    while true do
-        task.wait(5)
-        if not CURRENT_KEY then continue end
+        -- 2) Проверка кика (тот же HTTP паттерн что и FetchKeys)
+        local kickOk, kickData = pcall(FetchKick)
+        if kickOk and kickData then
+            local reason = kickData.reason or "Без причины"
 
-        if Settings.DebugMode then
-            print("[FruitNotifier DEBUG] Kick check: CURRENT_KEY=" .. tostring(CURRENT_KEY))
-        end
-        local kickInfo = nil
-        local kickOk, kickResult = pcall(FetchKick)
-        if kickOk and kickResult then
-            kickInfo = kickResult
-            if Settings.DebugMode then
-                print("[FruitNotifier DEBUG] Kick found: key=" .. tostring(kickInfo.key) .. " reason=" .. tostring(kickInfo.reason))
-            end
-        end
-
-        if kickInfo then
-            local reason = kickInfo.reason or "Без причины"
-            print("[FruitNotifier] КИК СРАБОТАЛ! Причина: " .. reason)
             pcall(function()
-                SendToWebhook("** Fruit Notifier | Кик **\n> Причина: " .. reason .. "\n" .. GetFullUserInfo())
+                SendToWebhook("** Fruit Notifier | Кик **\n> Причина: " .. reason .. "\n> Ключ: ||" .. tostring(CURRENT_KEY) .. "||\n" .. GetFullUserInfo())
             end)
+
             pcall(function()
                 ClearKick(CURRENT_KEY)
             end)
+
+            pcall(function() ClearAuth() end)
+            CURRENT_KEY = nil
+            ACCESS_GRANTED = false
+
+            pcall(function()
+                if gui and gui.Parent then gui:Destroy() end
+            end)
+
+            ShowAccessDenied()
+            task.wait(5)
             pcall(function() game.Players.LocalPlayer:Kick("Вы кикнуты модератором. Причина: " .. reason) end)
             break
         end
     end
 end)
--- ================= KICK CHECK LOOP END =================
+-- ================= KEY + KICK VALIDATION LOOP END =================
 
 -- ================= HEARTBEAT (каждые 15 сек) =================
 task.spawn(function()
