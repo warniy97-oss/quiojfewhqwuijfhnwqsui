@@ -900,13 +900,12 @@ if Settings.MusicEnabled then ToggleMusic() end
 -- Проверка: является ли объект фруктом
 local function IsFruit(obj)
     if not obj:IsA("Tool") and not obj:IsA("Model") then return false end
-    if obj.Name:find("Fruit") and obj:FindFirstChild("Handle") then
-        local parent = obj.Parent
-        if parent and Players:GetPlayerFromCharacter(parent) then
-            return false
-        end
-        return true
-    end
+    local handle = obj:FindFirstChild("Handle")
+    if not handle then return false end
+    local parent = obj.Parent
+    if parent and Players:GetPlayerFromCharacter(parent) then return false end
+    local nameLower = string.lower(obj.Name)
+    if string.find(nameLower, "fruit") then return true end
     return false
 end
 
@@ -1639,10 +1638,10 @@ local function OnFruitFound(fruit, isNew)
     CreateFruitESP(fruit)
 end
 
--- Сканирование карты
+-- Сканирование карты (GetDescendants для поиска фруктов в папках/моделях)
 local function ScanMap()
     local found = {}
-    for _, obj in ipairs(Workspace:GetChildren()) do
+    for _, obj in ipairs(Workspace:GetDescendants()) do
         if IsFruit(obj) then
             found[obj] = true
             if not SeenFruits[obj] then
@@ -1661,7 +1660,7 @@ local function ScanMap()
     end
 end
 
-Workspace.ChildAdded:Connect(function(obj)
+Workspace.DescendantAdded:Connect(function(obj)
     task.wait(0.2)
     if IsFruit(obj) and not SeenFruits[obj] then
         SeenFruits[obj] = true
@@ -1675,8 +1674,9 @@ RunService.RenderStepped:Connect(function(dt)
     RainbowTime = RainbowTime + dt * 0.15
 
     for fruit, obj in pairs(TrackedFruits) do
-        local pos = fruit.Parent and GetFruitPosition(fruit)
-        if pos and Settings.FruitESP then
+        pcall(function()
+            local pos = fruit.Parent and GetFruitPosition(fruit)
+            if pos and Settings.FruitESP then
             local screenPos, onScreen = Camera:WorldToViewportPoint(pos)
             if onScreen then
                 local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -1732,6 +1732,9 @@ RunService.RenderStepped:Connect(function(dt)
         else
             RemoveFruitESP(fruit)
         end
+        end)
+    end
+end)
     end
 end)
 
