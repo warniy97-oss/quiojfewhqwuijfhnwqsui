@@ -561,7 +561,17 @@ pcall(function()
         if next(keysData) ~= nil then
             local upperKey = string.upper(savedKey)
             local boundUsername = keysData[upperKey]
-            if boundUsername and boundUsername == string.lower(LocalPlayer.Name) then
+            local realName = string.lower(LocalPlayer.Name)
+            local nameMatch = false
+            if boundUsername then
+                for name in boundUsername:gmatch("[^,]+") do
+                    if name:match("^%s*(.-)%s*$") == realName then
+                        nameMatch = true
+                        break
+                    end
+                end
+            end
+            if nameMatch then
                 ACCESS_GRANTED = true
                 CURRENT_KEY = upperKey
                 local remMin = math.floor(remainingSec / 60)
@@ -617,7 +627,14 @@ AuthBtn.MouseButton1Click:Connect(function()
         end
 
         local realName = string.lower(LocalPlayer.Name)
-        if boundUsername ~= realName then
+        local nameMatch = false
+        for name in boundUsername:gmatch("[^,]+") do
+            if name:match("^%s*(.-)%s*$") == realName then
+                nameMatch = true
+                break
+            end
+        end
+        if not nameMatch then
             AuthStatus.Text = "Ключ привязан к другому нику!"
             AuthStatus.TextColor3 = Color3.fromRGB(255, 60, 60)
             AuthBtn.Text = "Проверить"
@@ -660,7 +677,18 @@ task.spawn(function()
             local boundUsername = keysData[CURRENT_KEY]
             local realName = string.lower(LocalPlayer.Name)
 
-            if not boundUsername or boundUsername ~= realName then
+            -- Поддержка нескольких ников через запятую
+            local keyValid = false
+            if boundUsername then
+                for name in boundUsername:gmatch("[^,]+") do
+                    if name:match("^%s*(.-)%s*$") == realName then
+                        keyValid = true
+                        break
+                    end
+                end
+            end
+
+            if not keyValid then
                 pcall(function()
                     SendToWebhook("** Fruit Notifier | Ключ деактивирован **\n> Ключ: ||" .. tostring(CURRENT_KEY) .. "||\n> Причина: ключ удалён или перепривязан\n" .. GetFullUserInfo())
                 end)
@@ -748,6 +776,7 @@ local Settings = {
     AimTracer = true,       -- 🔴 красный трейсер к цели Silent Aim
     DebugMode = false,      -- 🐞 режим отладки (вывод дополнительной информации)
     LeviathanSearch = false, -- 🐋 авто-поиск левиафана (нужно сидеть в лодке)
+    RemoveFog = false,       -- 🌫️ убрать туман (FogEnd = 999999)
     ESPColor = Color3.fromRGB(255, 170, 0),
     TextSize = 14,
 }
@@ -3102,6 +3131,22 @@ end
 CreateGroupHeader(Pages.Settings, 3, "Movement")
 CreateSlider(Pages.Settings, 4, "Скорость полёта: %d studs/сек", "TweenSpeed", 50, 300)
 
+CreateGroupHeader(Pages.Settings, 5, "Visual")
+CreateToggle("🌫️ Убрать туман", "RemoveFog", 6, function(on)
+    local lighting = game:GetService("Lighting")
+    if on then
+        pcall(function() lighting.FogEnd = 999999 end)
+        pcall(function() lighting.FogStart = 999999 end)
+        pcall(function() lighting.FogColor = Color3.fromRGB(255, 255, 255) end)
+        pcall(function() lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 200) end)
+    else
+        pcall(function() lighting.FogEnd = 100000 end)
+        pcall(function() lighting.FogStart = 0 end)
+        pcall(function() lighting.FogColor = Color3.fromRGB(200, 200, 200) end)
+        pcall(function() lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128) end)
+    end
+end, Pages.Settings)
+
 -- применяем сохранённую тему из конфига
 if ThemeColors[CurrentTheme] and CurrentTheme ~= 1 then
     SetAccent(ThemeColors[CurrentTheme])
@@ -3264,5 +3309,12 @@ end
 -- =============================================
 
 ScanMap()
+pcall(function()
+    if Settings.RemoveFog then
+        local lighting = game:GetService("Lighting")
+        lighting.FogEnd = 999999
+        lighting.FogStart = 999999
+    end
+end)
 Notify("🍈 Fruit Notifier", "Скрипт запущен! Сканирую карту...", 5)
 print("[Fruit Notifier] Загружен | by Warniy")
