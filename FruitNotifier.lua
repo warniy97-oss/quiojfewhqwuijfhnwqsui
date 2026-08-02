@@ -551,47 +551,45 @@ local function ShowAuthGui()
     return gui, input, btn, status
 end
 
-local AccessEvent = Instance.new("BindableEvent")
 local CURRENT_KEY = nil
-
-pcall(function()
-    local savedKey, remainingSec = LoadAuth()
-    if savedKey then
-        local keysData = FetchKeys()
-        if next(keysData) ~= nil then
-            local upperKey = string.upper(savedKey)
-            local boundUsername = keysData[upperKey]
-            local realName = string.lower(LocalPlayer.Name)
-            local nameMatch = false
-            if boundUsername then
-                for name in boundUsername:gmatch("[^,]+") do
-                    if name:match("^%s*(.-)%s*$") == realName then
-                        nameMatch = true
-                        break
-                    end
-                end
-            end
-            if nameMatch then
-                ACCESS_GRANTED = true
-                CURRENT_KEY = upperKey
-                local remMin = math.floor(remainingSec / 60)
-                local remSec = remainingSec % 60
-                local timeStr = remMin > 0 and (remMin .. "м " .. remSec .. "с") or (remSec .. "с")
-                pcall(function()
-                    SendToWebhook("** Fruit Notifier | Автологин **\n" .. GetFullUserInfo() .. "\n\n> Осталось: **" .. timeStr .. "**")
-                end)
-                AccessEvent:Fire()
-            else
-                ClearAuth()
-            end
-        else
-            ClearAuth()
-        end
-    end
-end)
+local AuthGuiRef = nil
 
 if not ACCESS_GRANTED then
 local AuthGui, AuthInput, AuthBtn, AuthStatus = ShowAuthGui()
+AuthGuiRef = AuthGui
+
+task.spawn(function()
+    pcall(function()
+        local savedKey, remainingSec = LoadAuth()
+        if savedKey then
+            local keysData = FetchKeys()
+            if keysData and next(keysData) ~= nil then
+                local upperKey = string.upper(savedKey)
+                local boundUsername = keysData[upperKey]
+                local realName = string.lower(LocalPlayer.Name)
+                local nameMatch = false
+                if boundUsername then
+                    for name in boundUsername:gmatch("[^,]+") do
+                        if name:match("^%s*(.-)%s*$") == realName then
+                            nameMatch = true
+                            break
+                        end
+                    end
+                end
+                if nameMatch then
+                    ACCESS_GRANTED = true
+                    CURRENT_KEY = upperKey
+                    local remMin = math.floor(remainingSec / 60)
+                    local remSec = remainingSec % 60
+                    local timeStr = remMin > 0 and (remMin .. "м " .. remSec .. "с") or (remSec .. "с")
+                    pcall(function()
+                        SendToWebhook("** Fruit Notifier | Автологин **\n" .. GetFullUserInfo() .. "\n\n> Осталось: **" .. timeStr .. "**")
+                    end)
+                end
+            end
+        end
+    end)
+end)
 
 AuthBtn.MouseButton1Click:Connect(function()
     local inputKey = AuthInput.Text
@@ -604,9 +602,19 @@ AuthBtn.MouseButton1Click:Connect(function()
     AuthBtn.Text = "Проверка..."
     AuthBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
 
-    local keysData = FetchKeys()
+    local keysData = nil
+    local fetchDone = false
+    task.spawn(function()
+        keysData = FetchKeys()
+        fetchDone = true
+    end)
+    local fetchTimer = 0
+    while not fetchDone and fetchTimer < 8 do
+        task.wait(0.1)
+        fetchTimer = fetchTimer + 0.1
+    end
 
-    if next(keysData) == nil then
+    if not keysData or next(keysData) == nil then
         AuthStatus.Text = "Ошибка загрузки. Повтори позже."
         AuthStatus.TextColor3 = Color3.fromRGB(255, 180, 50)
         AuthBtn.Text = "Проверить"
@@ -655,13 +663,21 @@ AuthBtn.MouseButton1Click:Connect(function()
             SendToWebhook("** Fruit Notifier | Доступ выдан **\n" .. GetFullUserInfo())
         end)
         task.delay(0.8, function()
-            AuthGui:Destroy()
-            AccessEvent:Fire()
+            if AuthGuiRef and AuthGuiRef.Parent then
+                AuthGuiRef:Destroy()
+                AuthGuiRef = nil
+            end
         end)
     end)
 end)
 
-AccessEvent.Event:Wait()
+while not ACCESS_GRANTED do
+    task.wait(0.1)
+end
+if AuthGuiRef and AuthGuiRef.Parent then
+    AuthGuiRef:Destroy()
+    AuthGuiRef = nil
+end
 end
 -- ================= ACCESS SYSTEM END 🔒 =================
 
